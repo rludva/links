@@ -1,0 +1,118 @@
+# Description:
+# ------------
+# This playbook is used to deploy the service to the RHEL9 systemd service.
+# The service is deployed using the systemd service file.
+# The service is started and enabled.
+# The service is deployed with the certificates from the <project>/resources/certificates folder. 
+# The certificates are copied to the /var/certificates/<service_url> folder.
+# The service is deployed with the binary from the <project>/build folder.
+# The binary is copied to the /usr/local/bin/<service_name> folder.
+# The SELinux context is set to bin_t for the binary.
+#
+
+---
+- name: Deploy service to the RHEL9 systemd service..
+  hosts: localhost
+  become: true
+  vars:
+    service_name: "links"
+    build_binary: "../build/{{ service_name}}"
+    installation_path: "/usr/local/bin/{{ service_name }}"
+    systemd_service_file: "../chome/etc/systemd/system/{{ service_name }}.service"
+
+    service_domain: "example.com"
+    service_url: "{{ service_name }}.{{ service_domain }}"
+    resources_path: "../resources"
+    resources_certificates_path: "{{ resources_path }}/certificates"
+    certificates_path: "/var/certificates/{{ service_url }}"
+    certificate_file: "cert.pem"
+    key_file: "privkey.pem"
+  tasks:
+    - name: Deploy service file for the systemd service..
+      ansible.builtin.copy:
+        src: "{{ systemd_service_file }}"
+        dest: "/etc/systemd/system/{{ service_name }}.service"
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Deploy binary from previously create build..
+      ansible.builtin.copy:
+        src: "{{ build_binary }}"
+        dest: "{{ installation_path }}"
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Set SELinux context to bin_t..
+      ansible.builtin.command:
+        cmd: semanage fcontext -a -t bin_t "{{ installation_path }}"
+
+    - name: Apply SELinux context changes
+      ansible.builtin.command:
+        cmd: restorecon -v "{{ installation_path }}"
+
+    - name: Create certificate resource folder..
+      ansible.builtin.file:
+        path: "{{ resources_certificates_path }}"
+        state: directory
+        mode: "0755"
+    
+    - name: Check if resource for certificates exists..
+      stat:
+        path: "{{ resources_certificates_path }}/{{ certificate_file }}"
+      register: cert_file
+
+    - name: certificate file existence..
+      debug:
+        msg: >
+          The certificate file exists at {{ cert_file.stat.path }}
+          with size {{ cert_file.stat.size }} bytes.
+      when: cert_file.stat.exists
+
+    - name: Fail if the certificate file does not exist..
+      fail:
+        msg: "The certificate file does not exist!"
+      when: not cert_file.stat.exists
+
+    - name: "01 - 01 - Deploy certificates, Create certificates folder.."
+      ansible.builtin.file:
+        path: "{{ certificates_path }}"
+        state: directory
+        mode: "0755"
+        owner: root
+        group: root
+
+    - name: "01 - 02 - Deploy certificates, Copy certificate file.."
+      ansible.builtin.copy:
+        src: "{{ resources_certificates_path }}/{{ certificate_file }}"
+        dest: "{{ certificates_path }}"
+        mode: "0644"
+        owner: root
+        group: root
+      
+    - name: "01 - 03 - Deploy certificates, Copy private key file.."
+      ansible.builtin.copy:
+        src: "{{ resources_certificates_path }}/{{ key_file }}"
+        dest: "{{ certificates_path }}"
+        mode: "0644"
+        owner: root
+        group: root
+    
+    - name: "01 - 04 - Deploy certificates, Copy fullchain file.."
+      ansible.builtin.copy:
+        src: "{{ resources_certificates_path }}/fullchain.pem"
+        dest: "{{ certificates_path }}"
+        mode: "0644"
+        owner: root
+        group: root
+
+    - name: Start service
+      ansible.builtin.systemd:
+        name: "{{ service_name }}.service"
+        state: started
+        enabled: yes

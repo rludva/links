@@ -1,0 +1,53 @@
+# Description:
+# ------------
+# This playbook is used to cleanup the service artifacts where it was deployed.
+#
+
+---
+- name: Cleanup service artifacts and RHEL9..
+  hosts: localhost
+  become: true
+  vars:
+    service_name: "links"
+    service_domain: "example.com"
+    certificates_root_path: "/var/certificates"
+
+    installation_path: "/usr/local/bin/{{ service_name }}"
+    service_url: "{{ service_name }}.{{ service_domain }}"
+    certificates_path: "{{ certificates_root_path }}/{{ service_url }}"
+    certificate_file: "cert.pem"
+    key_file: "privkey.pem"
+  tasks:
+    - name: Check if {{ service_name }}.service is present in systemd unit files..
+      ansible.builtin.command: systemctl list-unit-files
+      register: systemd_units
+
+    - name: Determine if {{ service_name }}.service is in the list..
+      set_fact:
+        service_exists: "{{ '{{ service_name }}.service}}' in systemd_units.stdout }}"
+
+    - name: Stop and disable the service if it is present..
+      ansible.builtin.systemd:
+        name: "{{ service_name }}.service"
+        state: stopped
+        enabled: no
+      when: service_exists
+
+    - name: Remove the service file..
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ service_name }}.service"
+        state: absent
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Remove the binary file if it exists..
+      ansible.builtin.file:
+        path: "{{ installation_path }}"
+        state: absent
+
+    - name: Remove the certificates folder if it exists..
+      ansible.builtin.file:
+        path: "{{ certificates_path }}"
+        state: absent
