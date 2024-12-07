@@ -3,6 +3,7 @@
 # This playbook is used to build the binary from the source code.
 # The build itself is managed via a Makefile.
 # Before a new build the old one is cleaned.
+#
 
 ---
 - name: Playbook to build binary from the source code..

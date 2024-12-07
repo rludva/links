@@ -16,7 +16,7 @@
 # $ mdir $HOME/playbooks
 # $ cd $HOME/playbooks
 # $ sudo ansible-playbook build_resources.yaml
-
+#
 
 ---
 - name: Prepare latest Let's Encrypt certificates to become a resource..

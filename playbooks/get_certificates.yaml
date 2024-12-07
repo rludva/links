@@ -24,6 +24,8 @@
 # ----------------
 # - It is not possible to copy the certificates directly from the /etc/letsencrypt/live folder because the folder is owned by the root.
 # - The certificates are copied to the resources folder with privileges for the resource owner and group and prepared to be used as a resource via the get_certificates.yaml playbook first.
+#
+
 ---
 - name: Get certificates from Let's Encrypt host..
   hosts: localhost
