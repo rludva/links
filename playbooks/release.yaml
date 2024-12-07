@@ -1,0 +1,74 @@
+# Description:
+# ------------
+# Create a new release from an existing build..
+# The version is defined by release major.menor.minor variables..
+# The binary is stored in the `releases` directory with the version in the name..
+#
+# The release directory is created if it does not exist..
+# The build is cleaned..
+# The build is built..
+# The release binary is removed if it already exists..
+# The release binary is copied to the releases directory..
+# The release binary is printed to the console..
+# The release directory is listed..
+#
+
+---
+- name: Create a new release from an existing build..
+  hosts: localhost
+  become: false
+  vars:
+    release_major: "0"
+    release_menor: "0"
+    release_minor: "1"
+    version: "{{ release_major }}.{{ release_menor }}.{{ release_minor }}"
+
+    binary_name: "links"
+    release_directory: "../releases"
+    release_binary: "{{ release_directory }}/{{ binary_name }}-v{{ version }}"
+
+    # Dependencies from the build..
+    output_directory: "../build"
+    output_binary: "{{ output_directory }}/{{ binary_name }}"
+  tasks:
+    - name: Print the current version of the release
+      debug:
+        msg: "The current version is {{ version }}"
+
+    - name: Create release directory..
+      ansible.builtin.file:
+        path: "{{ release_directory }}"
+        state: directory
+        mode: '0755'
+        recurse: yes
+
+    - name: Clena build..
+      ansible.builtin.command:
+        cmd: make -C .. clean
+
+    - name: Build..
+      ansible.builtin.command:
+        cmd: make -C .. build
+
+    - name: If the release binary already exists, then remove it..
+      ansible.builtin.file:
+        path: "{{ release_binary }}"
+        state: absent
+
+    - name: Copy binary as a new release binary to the release directory..
+      ansible.builtin.copy:
+        src: "{{ output_binary }}"
+        dest: "{{ release_binary }}"
+        mode: '0755'
+
+    - name: Print the release binary path
+      debug:
+        msg: "The release binary is at {{ release_binary }}"
+
+    - name: List the release directory
+      command: ls -l "{{ release_binary }}"
+      register: ls_output
+
+    - name: Print the release files
+      debug:
+        var: ls_output.stdout_lines
