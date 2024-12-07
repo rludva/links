@@ -1,0 +1,110 @@
+# Description:
+# ------------
+# This playbook is used to prepare the latest Let's Encrypt certificates to become as a resource.
+# It means that the certificates are copied to the resources folder with privileges for the resource owner and group.
+#
+# The certificates are stored initialy by defailt in the /etc/letsencrypt/live folder with privileges for the root only.
+# The certificates are copied to the resources folder with privileges for the resoiurce owner and group.
+# The resource owner and group are set to non root user to be able to access the certificates from a remote host.
+#
+# Usage:
+# ------
+# - It is important to execute the ansible-playbook with `sudo` explicitly even the fact that there is became: yes in the playbook!
+# - Execute this playbook only on a host where the certificates are stored and renewed via the Let's Encrypt certbot.
+# - Rename the resource_owner and resource_group variables to the user and group that will be used to access the certificates.
+# - By default the resource_owner and resource_group are set to imaginary user `lucifer`.
+# $ mdir $HOME/playbooks
+# $ cd $HOME/playbooks
+# $ sudo ansible-playbook build_resources.yaml
+
+
+---
+- name: Prepare latest Let's Encrypt certificates to become a resource..
+  hosts:
+    - localhost
+  become: yes
+  become_user: root
+  become_method: sudo
+  gather_facts: no
+  vars:
+    resources_path: "/var/resources"
+    resources_certificates_path: "{{ resources_path }}/certificates"
+    resource_owner: "root"
+    resource_group: "root"
+    acl_resource_owner: "lucifer"
+    acl_resource_group: "lucifer"
+    source_certificates_path: "/etc/letsencrypt/live"
+    certificate_urls:
+      - links.example.com
+    certificate_files:
+      - "cert.pem"
+      - "privkey.pem"
+      - "chain.pem"
+      - "fullchain.pem"
+  tasks:
+    - name: Create rousource folder for certificates..
+      ansible.builtin.file:
+        path: "{{ resources_certificates_path }}"
+        state: directory
+        mode: "0700"
+        owner: "{{ resource_owner }}"
+        group: "{{ resource_group }}"
+        recurse: yes
+
+    - name: Add additional privileges to the resource folder for acl user..
+      ansible.builtin.acl:
+        path: "{{ resources_path }}"
+        entity: "{{ acl_resource_owner }}"
+        etype: user
+        permissions: "rwx"
+        state: present
+        recurse: yes
+
+    - name: Add additional privileges to the resource folder for acl group..
+      ansible.builtin.acl:
+        path: "{{ resources_path }}"
+        entity: "{{ acl_resource_group }}"
+        etype: group
+        permissions: "rwx"
+        state: present
+
+    - name: Create certificates folder for each certificate URL..
+      ansible.builtin.file:
+        path: "{{ resources_certificates_path }}/{{ item }}"
+        state: directory
+        mode: "0700"
+        owner: "{{ resource_owner }}"
+        group: "{{ resource_group }}"
+        recurse: yes
+      with_items: "{{ certificate_urls }}"
+
+    - name: Process copy of certificate to the resources..
+      ansible.builtin.copy:
+        src: "{{ source_certificates_path }}/{{ item[0] }}/{{ item[1] }}"
+        dest: "{{ resources_certificates_path }}/{{ item[0] }}/{{ item[1] }}"
+        owner: "{{ resource_owner }}"
+        group: "{{ resource_group }}"
+        mode: "0700"
+      with_nested:
+        - "{{ certificate_urls }}"
+        - "{{ certificate_files }}"
+
+    - name: Add aditional privileges to the certificate files for acl user..
+      ansible.builtin.acl:
+        path: "{{ resources_certificates_path }}/{{ item }}"
+        entity: "{{ acl_resource_owner }}"
+        etype: user
+        permissions: "rwx"
+        state: present
+        recurse: yes
+      with_items: "{{ certificate_urls }}"
+
+    - name: Add aditional privileges to the certificate files for acl group..
+      ansible.builtin.acl:
+        path: "{{ resources_certificates_path }}/{{ item }}"
+        entity: "{{ acl_resource_group }}"
+        etype: group
+        permissions: "rwx"
+        state: present
+        recurse: yes
+      with_items: "{{ certificate_urls }}"
