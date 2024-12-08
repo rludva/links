@@ -12,14 +12,15 @@ import (
 )
 
 type link struct {
-	keyword string
-	url     string
-	popis   string
+	keyword   string
+	url       string
+	popis     string
+	kategorie string
 }
 
 var links = []link{
-	{"g", "https://www.google.com", "Google search engine"},
-	{"gh", "https://github.com", "GitHub"},
+	{"g", "https://www.google.com", "Google search engine", "general"},
+	{"gh", "https://github.com", "GitHub", "development"},
 }
 
 func process_link(keyword string, w http.ResponseWriter, r *http.Request) string {
@@ -38,16 +39,17 @@ func proces_cmd_links() string {
 	content := `
 	<h2>Links</h2>
 
-	<table border cellpadding="5" cellspacing="0">
+	<table border cellpadding="5" cellspacing="0" style="width:80%%; border-collapse: collapse;">
 	  <tr>
-	    <th>keyword</th>
-	    <th>url</th>
-	    <th>popis</th>
+	    <th style="width: 5%%;">keyword</th>
+	    <th style="width: 20%%;">url</th>
+	    <th style="width: 60%%;">popis</th>
+			<th style="width: 20%%;">kategorie</th>
 	  </tr>
 	`
 
 	for _, l := range links {
-		content += fmt.Sprintf("<tr>  <td>%s</td> <td><a href='%s'>%s</a></td>  <td>%s</td>   </tr>\n", l.keyword, l.url, l.popis, l.url)
+		content += fmt.Sprintf("<tr>  <td>%s</td> <td><a href='%s'>%s</a></td>  <td>%s</td> <td>%s</td>   </tr>\n", l.keyword, l.url, l.url, l.popis, l.kategorie)
 	}
 
 	content += `
@@ -107,6 +109,25 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	<html>
 	<head>
 		<title>Links</title>
+		<style type="text/css">
+		body {
+			font-family: Tahoma, Arial, sans-serif;
+		}
+		table {
+			border-collapse: collapse;
+			font-size: 10px;
+		}
+		td, th {
+			border: 1px solid #999;
+			padding: 8px;
+		}
+		tr:hover {
+			background-color: #F5FFFA;
+		}
+		table tr th {
+			background-color: #ffffd7;
+		}
+		</style>
 	</head>
 	<body>
 	{{.PageTop}}
