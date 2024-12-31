@@ -12,29 +12,28 @@
 
 ---
 - name: Deploy service to the RHEL9 systemd service..
-  hosts: localhost
+  hosts: bastion
   become: true
+  gather_facts: no
+
   vars:
     service_name: "links"
-    build_binary: "../build/{{ service_name}}"
-    installation_path: "/usr/local/bin/{{ service_name }}"
-    systemd_service_file: "../chome/etc/systemd/system/{{ service_name }}.service"
+    build_binary: "../build/{{ service_name }}"
+    installation_path: "/usr/local/bin/{{ service_instance_name }}"
+    systemd_service_file: "../chome/etc/systemd/system/{{ service_instance_name }}.service"
+    systemd_service_template_file: "../chome/etc/systemd/system/{{ service_name }}.service.j2"
 
-    service_domain: "example.com"
-    service_url: "{{ service_name }}.{{ service_domain }}"
     resources_path: "../resources"
-    resources_certificates_path: "{{ resources_path }}/certificates"
-    certificates_path: "/var/certificates/{{ service_url }}"
+    resources_certificates_path: "{{ resources_path }}/certificates/{{ service_instance_url }}"
+    certificates_path: "/var/certificates/{{ service_instance_url }}"
     certificate_file: "cert.pem"
     key_file: "privkey.pem"
+
   tasks:
-    - name: Deploy service file for the systemd service..
-      ansible.builtin.copy:
-        src: "{{ systemd_service_file }}"
-        dest: "/etc/systemd/system/{{ service_name }}.service"
-        mode: '0644'
-        owner: root
-        group: root
+    - name: Render the systemd service file template and save to file..
+      template:
+        src: "{{ systemd_service_template_file }}"
+        dest: "/etc/systemd/system/{{ service_instance_name }}.service"
 
     - name: Reload systemd
       ansible.builtin.systemd:
@@ -66,6 +65,7 @@
       stat:
         path: "{{ resources_certificates_path }}/{{ certificate_file }}"
       register: cert_file
+      delegate_to: localhost
 
     - name: certificate file existence..
       debug:
@@ -76,7 +76,9 @@
 
     - name: Fail if the certificate file does not exist..
       fail:
-        msg: "The certificate file does not exist!"
+        msg: >
+          "The certificate file does not exist!"
+          "{{ resources_certificates_path }}/{{ certificate_file }}"
       when: not cert_file.stat.exists
 
     - name: "01 - 01 - Deploy certificates, Create certificates folder.."
@@ -113,6 +115,6 @@
 
     - name: Start service
       ansible.builtin.systemd:
-        name: "{{ service_name }}.service"
+        name: "{{ service_instance_name }}.service"
         state: started
         enabled: yes

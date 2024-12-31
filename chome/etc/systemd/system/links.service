@@ -1,9 +1,0 @@
-[Unit]
-Description=Links easy service..
-
-[Service]
-ExecStart=/usr/local/bin/links --port 8901 --cert=/var/certificates/links.example.com/cert.pem --key=/var/certificates/links.example.com/privkey.pem
-Restart=always
-
-[Install]
-WantedBy=multi-user.target

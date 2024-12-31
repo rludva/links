@@ -1,0 +1,40 @@
+# Description:
+# ------------
+# This playbook is used to get certificates from Let's Encrypt host.
+# The certificates are stored in the <project>/resources/certificates folder.
+# The certificates are used to deploy the service via deploy.yaml playbook.
+#
+
+---
+- name: Get certificates from Let's Encrypt host..
+  hosts: localhost
+  become: false
+  gather_facts: no
+  vars:
+    letsencrypt_resource_path: "/var/resources/certificates"
+
+    resources_path: "../resources"
+    resources_certificates_path: "{{ resources_path }}/certificates"
+
+    certificate_files:
+      - "cert.pem"
+      - "privkey.pem"
+      - "chain.pem"
+      - "fullchain.pem"
+
+  tasks:
+    - name: Create certificates directory..
+      file:
+        path: "{{ resources_certificates_path }}/{{ service_instance_url }}"
+        state: directory
+        recurse: yes
+    
+    - name: Print certificate URLs..
+      debug:
+        msg: "Source: `{{ letsencrypt_resource_path }}/{{ service_instance_url }}`   Destination: `{{ resources_certificates_path }}/{{ service_instance_url }}`"
+
+
+    - name: Copy certificate resources from Let's Encrypt host..
+      ansible.builtin.command: 
+        cmd: "scp  {{ ansible_user }}@{{ letsencrypt_host }}:{{ letsencrypt_resource_path }}/{{ service_instance_url }}/{{ item }} {{ resources_certificates_path }}/{{ service_instance_url }}/{{ item }}"
+      loop: "{{ certificate_files }}"

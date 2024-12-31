@@ -2,13 +2,13 @@
 # ------------
 # Create a new release from an existing build..
 # The version is defined by release major.menor.minor variables..
-# The binary is stored in the `releases` directory with the version in the name..
+# The binary is stored in the release directory with the version in the name..
 #
 # The release directory is created if it does not exist..
 # The build is cleaned..
 # The build is built..
 # The release binary is removed if it already exists..
-# The release binary is copied to the releases directory..
+# The release binary is copied to the release directory..
 # The release binary is printed to the console..
 # The release directory is listed..
 #

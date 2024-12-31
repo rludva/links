@@ -1,0 +1,28 @@
+all:
+  vars:
+    service_instance_name: links
+    service_instance_description: Simple Links service example..
+    service_instance_port: 8901
+    service_instance_url: "links.example.com"
+
+    ansible_user: "username"
+    ansible_ssh_private_key_file: "/home/username/.ssh/id_rsa"
+
+    letsencrypt_host: "letsencrypt.example.com"
+    acl_resource_owner: "username"
+    acl_resource_group: "username"
+
+  children: 
+    # Group for host that are used to install the service..
+    bastion:
+      hosts: 
+        bastion.example.com:
+          ansible_host: bastion.example.com
+          become: yes
+
+    # Group for host that is used to manage certificates..
+    letsencrypt_host:
+      hosts:
+        bastion.example.com:  
+          ansible_host: letsencrypt.example.com
+          become: yes

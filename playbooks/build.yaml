@@ -1,19 +1,33 @@
 # Description:
 # ------------
-# This playbook is used to build the binary from the source code.
-# The build itself is managed via a Makefile.
-# Before a new build the old one is cleaned.
-#
+# This playbook is used to build the binary from the source code..
+# The build itself is manage via a Makefile..
+# Before a new build the old one is cleaned..
 
 ---
 - name: Playbook to build binary from the source code..
   hosts: localhost
   become: false
   tasks:
+    - name: Print the current name of instance that is built..
+      ansible.builtin.debug:
+        msg: "service_instance_name is defined and its value is `{{ service_instance_name }}`"
+      when: service_instance_name is defined
+
+    - name: Task that executes when service_instance_name is not defined
+      ansible.builtin.debug:
+        msg: "service_instance_name is not defined"
+      when: service_instance_name is not defined
+
+    - name: Ensure service_instance_name is defined
+      ansible.builtin.fail: 
+        msg: "The variable service_instance_name is not defined. Please set the variable via running the playbook with the inventory file." 
+      when: service_instance_name is not defined      
+
     - name: Clena build..
       ansible.builtin.command:
-        cmd: make -C .. clean
+        cmd: make -C .. clean APP_NAME={{ service_instance_name }}
 
     - name: Build..
       ansible.builtin.command:
-        cmd: make -C .. build
+        cmd: make -C .. build APP_NAME={{ service_instance_name }}

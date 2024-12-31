@@ -1,0 +1,174 @@
+# Description:
+# ------------
+#
+# Usage:
+# ------
+# 1. On the Let's Encrypt host use `build_resource.yaml` playbook to copy the certificates to the resources folder on the host where the service is deployed.
+# 2. On the host where the service is deployed use this `get_certificates.yaml` and then `deploy.yaml` playbook to deploy the service.
+#    Use `hosts: localhost` in the playbook to declare where to execute this playbook if it's not the `localhost`.
+#
+# ```bash
+# $ cd <project>/playbooks
+# $ sudo ansible-playbook get_certificates.yaml
+# ```
+#
+# Note:
+# -----
+# - Correct the letsencrypt_host and ssh_user variables..
+# - Correct the certificate_ulrs for your service URL..
+#
+# Additional info:
+# ----------------
+# - It is not possible to copy the certificates directly from the /etc/letsencrypt/live folder because the folder is owned by the root.
+# - The certificates are copied to the resources folder with privileges for the resource owner and group and prepared to be used as a resource via the `02 - get_certificates.yaml` playbook first.
+
+---
+- name: Prepare latest Let's Encrypt certificates to become a resource..
+  hosts: letsencrypt_host
+  become: yes
+  become_user: root
+  become_method: sudo
+#  gather_facts: no
+  vars:
+    resources_path: "/var/resources"
+    resources_certificates_path: "{{ resources_path }}/certificates"
+    resource_owner: "root"
+    resource_group: "root"
+    source_certificates_path: "/etc/letsencrypt/live"
+    certificate_files:
+      - "cert.pem"
+      - "privkey.pem"
+      - "chain.pem"
+      - "fullchain.pem"
+  tasks:
+    - name: Create rousource folder for certificates..
+      ansible.builtin.file:
+        path: "{{ resources_certificates_path }}/{{ service_instance_url }}"
+        state: directory
+        mode: "0700"
+        owner: "{{ resource_owner }}"
+        group: "{{ resource_group }}"
+        recurse: yes
+
+    - name: Add additional privileges to the resource folder for acl user..
+      ansible.builtin.acl:
+        path: "{{ resources_path }}"
+        entity: "{{ acl_resource_owner }}"
+        etype: user
+        permissions: "rwx"
+        state: present
+        recurse: yes
+
+    - name: Add additional privileges to the resource folder for acl group..
+      ansible.builtin.acl:
+        path: "{{ resources_path }}"
+        entity: "{{ acl_resource_group }}"
+        etype: group
+        permissions: "rwx"
+        state: present
+
+    # Process `cert.pem`..
+    - name: "Set variable for the current managed certificate file.."
+      set_fact:
+        certificate_file_name: "cert.pem"
+
+    - name: Read the certificates content `{{ certificate_file_name }}`..
+      slurp:
+        src: "{{ source_certificates_path }}/{{ service_instance_url }}/{{ certificate_file_name }}"
+      register: certificate_content
+
+    - name: Decode the certificates content..
+      set_fact:
+        "certificate_text": "{{ certificate_content.content | b64decode }}"
+
+    - name: Save the contents into a new certificate files `{{ certificate_file_name }}`..
+      copy:
+        content: "{{ certificate_text }}"
+        dest: "{{ resources_certificates_path }}/{{ service_instance_url }}/{{ certificate_file_name }}"
+        owner: "{{ resource_owner }}"
+        group: "{{ resource_group }}"
+        mode: "0700"
+
+    # Process `privkey.pem`..
+    - name: Set variable for the current managed certificate file..
+      set_fact:
+        certificate_file_name: "privkey.pem"
+
+    - name: Read the certificates content `{{ certificate_file_name }}`..
+      slurp:
+        src: "{{ source_certificates_path }}/{{ service_instance_url }}/{{ certificate_file_name }}"
+      register: certificate_content
+
+    - name: Decode the certificates content `{{ certificate_file_name }}`..
+      set_fact:
+        "certificate_text": "{{ certificate_content.content | b64decode }}"
+
+    - name: Save the contents into a new certificate files..
+      copy:
+        content: "{{ certificate_text }}"
+        dest: "{{ resources_certificates_path }}/{{ service_instance_url }}/{{ certificate_file_name }}"
+        owner: "{{ resource_owner }}"
+        group: "{{ resource_group }}"
+        mode: "0700"
+
+    # Process `chain.pem`..
+    - name: Set variable for the current managed certificate file..
+      set_fact:
+        certificate_file_name: "chain.pem"
+
+    - name: Read the certificates content for `{{ certificate_file_name }}`..
+      slurp:
+        src: "{{ source_certificates_path }}/{{ service_instance_url }}/{{ certificate_file_name }}"
+      register: certificate_content
+
+    - name: Decode the certificates content `{{ certificate_file_name }}`..
+      set_fact:
+        "certificate_text": "{{ certificate_content.content | b64decode }}"
+
+    - name: Save the contents into a new certificate files `{{ certificate_file_name }}`..
+      copy:
+        content: "{{ certificate_text }}"
+        dest: "{{ resources_certificates_path }}/{{ service_instance_url }}/{{ certificate_file_name }}"
+        owner: "{{ resource_owner }}"
+        group: "{{ resource_group }}"
+        mode: "0700"
+
+    # Process `fullchain.pem`..
+    - name: Set variable for the current managed certificate file..
+      set_fact:
+        certificate_file_name: "fullchain.pem"
+
+    - name: Read the certificates content `{{ certificate_file_name }}`..
+      slurp:
+        src: "{{ source_certificates_path }}/{{ service_instance_url }}/{{ certificate_file_name }}"
+      register: certificate_content
+
+    - name: Decode the certificates content `{{ certificate_file_name }}`..
+      set_fact:
+        "certificate_text": "{{ certificate_content.content | b64decode }}"
+
+    - name: Save the contents into a new certificate files `{{ certificate_file_name }}`..
+      copy:
+        content: "{{ certificate_text }}"
+        dest: "{{ resources_certificates_path }}/{{ service_instance_url }}/{{ certificate_file_name }}"
+        owner: "{{ resource_owner }}"
+        group: "{{ resource_group }}"
+        mode: "0700"
+
+    - name: Add aditional privileges to the certificate files for acl user..
+      ansible.builtin.acl:
+        path: "{{ resources_certificates_path }}/{{ service_instance_url }}"
+        entity: "{{ acl_resource_owner }}"
+        etype: user
+        permissions: "rwx"
+        state: present
+        recurse: yes
+
+    - name: Add aditional privileges to the certificate files for acl group..
+      ansible.builtin.acl:
+        path: "{{ resources_certificates_path }}/{{ service_instance_url }}"
+        entity: "{{ acl_resource_group }}"
+        etype: group
+        permissions: "rwx"
+        state: present
+        recurse: yes
