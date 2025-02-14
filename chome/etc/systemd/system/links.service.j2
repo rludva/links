@@ -2,7 +2,7 @@
 Description={{ service_instance_description }}
 
 [Service]
-ExecStart=/usr/local/bin/{{ service_instance_name }} --port {{ service_instance_port }} --cert=/var/certificates/{{ service_instance_url }}/cert.pem --key=/var/certificates/{{ service_instance_url }}/privkey.pem
+ExecStart=/usr/local/bin/{{ service_instance_name }} --datafile {{ datafile_path }}/links.csv  --port {{ service_instance_port }} --cert=/var/certificates/{{ service_instance_url }}/cert.pem --key=/var/certificates/{{ service_instance_url }}/privkey.pem
 Restart=always
 
 [Install]

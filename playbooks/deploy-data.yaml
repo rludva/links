@@ -1,0 +1,38 @@
+---
+- name: Deploy new data file for the service..
+  hosts: bastion
+  become: true
+  gather_facts: no
+
+  vars:
+    # Default value for the restart_service variable..
+    restart_service: false 
+
+  tasks:
+    - name: Create folder for data file..
+      ansible.builtin.file:
+        path: "{{ datafile_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Deploy links.csv file with data..
+      ansible.builtin.copy:
+        src: "{{ resources_path }}/links.csv"
+        dest: "{{ datafile_path }}/links.csv"
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Stop the service..
+      ansible.builtin.systemd:
+        name: "{{ service_instance_name }}.service"
+        state: stopped
+        enabled: yes
+      when: restart_service | bool
+
+    - name: Start service
+      ansible.builtin.systemd:
+        name: "{{ service_instance_name }}.service"
+        state: started
+        enabled: yes
+      when: restart_service | bool

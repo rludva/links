@@ -12,6 +12,10 @@ all:
     acl_resource_owner: "username"
     acl_resource_group: "username"
 
+    # These values are only for deploy.yaml and deploy-data.yaml playbooks as they are used in the tasks..
+    resources_path: "../resources"
+    datafile_path: "/var/lib/{{ service_instance_name }}"
+
   children: 
     # Group for host that are used to install the service..
     bastion:

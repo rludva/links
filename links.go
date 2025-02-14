@@ -2,25 +2,29 @@ package main
 
 import (
 	"bytes"
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"text/template"
 )
 
 type link struct {
 	keyword   string
-	url       string
 	popis     string
+	url       string
 	kategorie string
 }
 
 var links = []link{
-	{"g", "https://www.google.com", "Google search engine", "general"},
-	{"gh", "https://github.com", "GitHub", "development"},
+	{"g", "Google search engine", "https://www.google.com", "general"},
+	{"f", "Facebook", "https://www.facebook.com/", "general"},
+	{"y", "YouTube", "https://www.youtube.com/", "general"},
+	{"gh", "GitHub", "https://github.com", "development"},
 }
 
 func process_link(keyword string, w http.ResponseWriter, r *http.Request) string {
@@ -39,17 +43,20 @@ func proces_cmd_links() string {
 	content := `
 	<h2>Links</h2>
 
-	<table border cellpadding="5" cellspacing="0" style="width:80%%; border-collapse: collapse;">
+	<table border cellpadding="5" cellspacing="0" style="width:80%; border-collapse: collapse;">
 	  <tr>
-	    <th style="width: 5%%;">keyword</th>
-	    <th style="width: 20%%;">url</th>
-	    <th style="width: 60%%;">popis</th>
-			<th style="width: 20%%;">kategorie</th>
+	    <th style="width: 20%;">keyword</th>
+	    <th style="width: 50%;">link</th>
+			<th style="width: 25%;">kategorie</th>
 	  </tr>
 	`
 
 	for _, l := range links {
-		content += fmt.Sprintf("<tr>  <td>%s</td> <td><a href='%s'>%s</a></td>  <td>%s</td> <td>%s</td>   </tr>\n", l.keyword, l.url, l.url, l.popis, l.kategorie)
+		keyword := strings.ReplaceAll(l.keyword, "%", "%%")
+		url := strings.ReplaceAll(l.url, "%", "%%")
+		popis := strings.ReplaceAll(l.popis, "%", "%%")
+		kategorie := strings.ReplaceAll(l.kategorie, "%", "%%")
+		content += fmt.Sprintf("<tr>  <td>%s</td> <td><a href='%s'>%s</a></td>  <td>%s</td> </tr>\n", keyword, url, popis, kategorie)
 	}
 
 	content += `
@@ -61,11 +68,11 @@ func proces_cmd_links() string {
 
 func generatePageTop() string {
 	content := `
-	<h1>Links</h1>
+	<h1>Personal homepage</h1>
 		
 	<hr>
 	<form action="/" method="post">
-		<label for="keyword">Link:</label>
+		<label for="keyword">Odkaz:</label>
 		 <input type="text" size="50" id="id_keyword" name="keyword" required autofocus>
 		 <input type="submit" value="Submit">
 	</form>
@@ -94,8 +101,78 @@ func generatePageContent(w http.ResponseWriter, r *http.Request) string {
 func generatePageBottom() string {
 	return `
 		<hr>
-		<p style="fond-size:40%;">personal homepage</p>	
+		<button class="import-button">Import</button>
 	`
+}
+
+func handler_csv(w http.ResponseWriter, r *http.Request) {
+	// Create a CSV writer that writes to stdout
+	writer := csv.NewWriter(os.Stdout)
+	writer.Comma = ';'
+	defer writer.Flush()
+
+	// Write the header
+	err := writer.Write([]string{"keyword", "popis", "url", "kategorie"})
+	if err != nil {
+		return
+	}
+
+	// Write each link as a row in the CSV
+	for _, l := range links {
+		err = writer.Write([]string{l.keyword, l.popis, l.url, l.kategorie})
+		if err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+func import_csv(datafile string) {
+
+	// If the datafile is empty, use the default value..
+	if datafile == "" {
+		datafile = "links.csv"
+	}
+
+	fmt.Println("Datafile:", datafile)
+
+	// Open the CSV file
+	file, err := os.Open(datafile)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	// Create a new CSV reader
+	reader := csv.NewReader(file)
+	reader.Comma = ';'
+
+	// Read all the records
+	records, err := reader.ReadAll()
+	if err != nil {
+		fmt.Println("ReadAll Error %v", err)
+		return
+	}
+	fmt.Println("ReadAll().. done")
+
+	// Create a new slice to store the links
+	links = make([]link, 0, len(records))
+
+	// Loop over the records
+	for _, record := range records {
+		// Create a new link
+		link := link{
+			keyword:   record[0],
+			popis:     record[1],
+			url:       record[2],
+			kategorie: record[3],
+		}
+
+		// Append the link to the slice
+		links = append(links, link)
+		fmt.Println("links appended")
+	}
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -108,25 +185,33 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	<!DOCTYPE html>
 	<html>
 	<head>
-		<title>Links</title>
+		<title>Personal homepage</title>
 		<style type="text/css">
-		body {
-			font-family: Tahoma, Arial, sans-serif;
-		}
+		body {font-family: Tahoma, Arial, sans-serif;}
 		table {
 			border-collapse: collapse;
 			font-size: 10px;
 		}
-		td, th {
-			border: 1px solid #999;
-			padding: 8px;
-		}
-		tr:hover {
-			background-color: #F5FFFA;
-		}
-		table tr th {
-			background-color: #ffffd7;
-		}
+		td, th {border: 1px solid #999; padding: 8px;}
+		tr:hover {background-color: #F5FFFA; }
+		table tr th {background-color: #ffffd7;}
+		
+		.import-button {
+      display: inline-block;
+      padding: 10px 20px;
+      font-size: 16px;
+      color: #fff;
+      background-color: #007BFF;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .import-button:hover {
+      background-color: #0056b3;
+    }
+
 		</style>
 	</head>
 	<body>
@@ -135,6 +220,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	{{.PageContent}}
 
 	{{.PageBottom}}
+
+  <script>
+      // Detection of pageshow..
+      window.addEventListener('pageshow', (event) => {
+          const inputField = document.getElementById('id_keyword');
+          if (inputField) {
+              inputField.focus(); 
+          }
+      });
+  </script>
+
 	</body>
 	</html>
 	`
@@ -170,7 +266,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Read flag values and return the port number and certificate with key..
-func parseFlags() (int, string, string) {
+func parseFlags() (string, int, string, string) {
+	datafileFlag := flag.String("datafile", "links.csv", "Path to the CSV file")
 	portFlag := flag.Int("port", 0, "Port number for this server")
 	pFlag := flag.Int("p", 0, "Short port number argument")
 	certFlag := flag.String("cert", "", "Path to certificate")
@@ -179,10 +276,26 @@ func parseFlags() (int, string, string) {
 	// Parse the flags..
 	flag.Parse()
 
+	datafile := manageDatafileFlag(datafileFlag)
 	port := managePortFlags(portFlag, pFlag)
 	certificate, key := manageCertificateFlags(certFlag, keyFlag)
 
-	return port, certificate, key
+	return datafile, port, certificate, key
+}
+
+func manageDatafileFlag(datafileFlag *string) string {
+	// Read the certificate and key files from the environment variables..
+	envDatafile := os.Getenv("DATAFILE")
+
+	datafile := ""
+	if envDatafile != "" {
+		datafile = envDatafile
+	}
+	if *datafileFlag != "" {
+		datafile = *datafileFlag
+	}
+
+	return datafile
 }
 
 func managePortFlags(portFlag *int, pFlag *int) int {
@@ -197,7 +310,7 @@ func managePortFlags(portFlag *int, pFlag *int) int {
 	if envPortStr != "" {
 		p, err := strconv.Atoi(envPortStr)
 		if err != nil {
-			fmt.Println("Conversation error for HTTP_PORT env:", err)
+			fmt.Println("Chyba při konverzi:", err)
 		}
 
 		port = p
@@ -235,14 +348,18 @@ func manageCertificateFlags(certFlag *string, keyFlag *string) (string, string) 
 
 func main() {
 
-	port, certificate, key := parseFlags()
+	datafile, port, certificate, key := parseFlags()
+
+	// Read data from the CSV file..
+	import_csv(datafile)
 
 	// Build the socket address..
 	addr := fmt.Sprintf(":%v", port)
-	fmt.Printf("Server operates on port %d\n", port)
+	fmt.Printf("Server operates on portu %d\n", port)
 
 	// Register the handler and start the server..
 	http.HandleFunc("/", handler)
+	http.HandleFunc("/csv", handler_csv)
 
 	// Start the server with or without TLS..
 	if certificate == "" || key == "" {
