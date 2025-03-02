@@ -18,10 +18,12 @@
 
   vars:
     service_name: "links"
-    build_binary: "../build/{{ service_name }}"
-    installation_path: "/usr/local/bin/{{ service_instance_name }}"
+    build_binary: "../build/{{ service_instance_name }}"
+    installation_path: "/usr/local/bin"
+    installation_file: "{{ installation_path }}/{{ service_instance_name }}"
     systemd_service_file: "../chome/etc/systemd/system/{{ service_instance_name }}.service"
     systemd_service_template_file: "../chome/etc/systemd/system/{{ service_name }}.service.j2"
+    datafile_path: "/var/lib/{{ service_instance_name }}"
 
     resources_path: "../resources"
     resources_certificates_path: "{{ resources_path }}/certificates/{{ service_instance_url }}"
@@ -42,18 +44,32 @@
     - name: Deploy binary from previously create build..
       ansible.builtin.copy:
         src: "{{ build_binary }}"
-        dest: "{{ installation_path }}"
+        dest: "{{ installation_file }}"
         mode: '0755'
+        owner: root
+        group: root
+
+    - name: Create folder for data file..
+      ansible.builtin.file:
+        path: "{{ datafile_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Deploy links.csv file with data..
+      ansible.builtin.copy:
+        src: "{{ resources_path }}/links.csv"
+        dest: "{{ datafile_path }}/links.csv"
+        mode: '0644'
         owner: root
         group: root
 
     - name: Set SELinux context to bin_t..
       ansible.builtin.command:
-        cmd: semanage fcontext -a -t bin_t "{{ installation_path }}"
+        cmd: semanage fcontext -a -t bin_t "{{ installation_file }}"
 
     - name: Apply SELinux context changes
       ansible.builtin.command:
-        cmd: restorecon -v "{{ installation_path }}"
+        cmd: restorecon -v "{{ installation_file }}"
 
     - name: Create certificate resource folder..
       ansible.builtin.file:
@@ -112,6 +128,12 @@
         mode: "0644"
         owner: root
         group: root
+    
+    - name: Stop the service..
+      ansible.builtin.systemd:
+        name: "{{ service_instance_name }}.service"
+        state: stopped
+        enabled: yes
 
     - name: Start service
       ansible.builtin.systemd:

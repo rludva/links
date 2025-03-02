@@ -56,11 +56,35 @@ func proces_cmd_links() string {
 		url := strings.ReplaceAll(l.url, "%", "%%")
 		popis := strings.ReplaceAll(l.popis, "%", "%%")
 		kategorie := strings.ReplaceAll(l.kategorie, "%", "%%")
-		content += fmt.Sprintf("<tr>  <td>%s</td> <td><a href='%s'>%s</a></td>  <td>%s</td> </tr>\n", keyword, url, popis, kategorie)
+		content += fmt.Sprintf("<tr>  <td>%s</td> <td><a href='%s'>%s</a><br><div style=\"color: gray; font-size:8px;\">%s</div></td>  <td>%s</td> </tr>\n", keyword, url, popis, url, kategorie)
 	}
 
 	content += `
 	</table>
+	`
+
+	return content
+}
+
+func process_cmd_add() string {
+	// Generatr web form to add a new link..
+	content := `
+	<h2>Add a new link</h2>
+	<form action="/add" method="post">
+	<label>Keyword:</label>
+	<input type="text" name="keyword" required>
+	<br>
+	<label>Popis:</label>
+	<input type="text" name="popis" required>
+	<br>
+	<label>URL:</label>
+	<input type="text" name="url" required>
+	<br>
+	<label>Kategorie:</label>
+	<input type="text" name="kategorie" required>
+	<br>
+	<input type="submit" value="Submit">
+	</form>
 	`
 
 	return content
@@ -71,12 +95,14 @@ func generatePageTop() string {
 	<h1>Personal homepage</h1>
 		
 	<hr>
-	<form action="/" method="post">
+	<form name="links" action="/" method="post">
 		<label for="keyword">Odkaz:</label>
 		 <input type="text" size="50" id="id_keyword" name="keyword" required autofocus>
 		 <input type="submit" value="Submit">
 	</form>
 	<hr>
+
+
 	`
 	return content
 }
@@ -91,6 +117,11 @@ func generatePageContent(w http.ResponseWriter, r *http.Request) string {
 		content = proces_cmd_links()
 	}
 
+	//
+	if keyword == "add" {
+		content = process_cmd_add()
+	}
+
 	if content == "" {
 		content = process_link(keyword, w, r)
 	}
@@ -101,7 +132,15 @@ func generatePageContent(w http.ResponseWriter, r *http.Request) string {
 func generatePageBottom() string {
 	return `
 		<hr>
-		<button class="import-button">Import</button>
+	<!-- <button class="import-button">Import</button> -->
+	<button id="addButton" class="import-button">Add</button>
+
+<script>
+  document.getElementById("addButton").addEventListener("click", function () {
+    document.getElementById("id_keyword").value = "add";
+    document.getElementById("links").submit();
+  });
+</script>	
 	`
 }
 
@@ -359,7 +398,6 @@ func main() {
 
 	// Register the handler and start the server..
 	http.HandleFunc("/", handler)
-	http.HandleFunc("/csv", handler_csv)
 
 	// Start the server with or without TLS..
 	if certificate == "" || key == "" {
