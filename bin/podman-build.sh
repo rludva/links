@@ -1,20 +1,19 @@
 #!/bin/bash
 
+#
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 
+# Read the configuration..
+source $SCRIPT_DIR/podman-data.sh
 
-# Set the repository name
-REPOSITORY="localhost"
-IMAGE_NAME="links"
-TAG="latest"
+# 
+FULL_IMAGE_NAME="${REGISTRY_HOST}/$REGISTRY_USER/${IMAGE_NAME}:${IMAGE_TAG}"
 
-# Set the external registry
-EXTERNAL_REGISTRY_HOST="quay.io"
-EXTERNAL_REGISTRY_USER="$LOGNAME"
-EXTERNAL_REGISTRY="$EXTERNAL_REGISTRY_HOST/$EXTERNAL_REGISTRY_USER/${IMAGE_NAME}:${TAG}"
-
-FULL_IMAGE_NAME="${REPOSITORY}/${IMAGE_NAME}:${TAG}"
+if [ -z "$FULL_IMAGE_NAME" ]; then
+    echo "FULL_IMAGE_NAME is empty"
+    exit 1
+fi
 
 
 # Check if the image exists..
@@ -27,7 +26,7 @@ fi
 
 
 # Build the Docker image
-podman build -t $REPOSITORY/$IMAGE_NAME:$TAG --file $PARENT_DIR/Dockerfile $PARENT_DIR
+podman build -t $REGISTRY_HOST/$REGISTRY_USER/$IMAGE_NAME:$IMAGE_TAG --file $PARENT_DIR/Dockerfile $PARENT_DIR
 
 IMAGE_ID=$(podman images --format "{{.Id}}" "$FULL_IMAGE_NAME")
 if [ -z "$IMAGE_ID" ]; then
@@ -35,11 +34,12 @@ if [ -z "$IMAGE_ID" ]; then
     exit 1
 fi
 
-# Tag the image
-podman tag $IMAGE_ID $EXTERNAL_REGISTRY
-
 # Log in to the registry..
 podman_login_quay.io.sh
 
 # Push the image to the registry
-podman push $EXTERNAL_REGISTRY
+podman push $FULL_IMAGE_NAME
+
+# Print images
+echo
+podman images
